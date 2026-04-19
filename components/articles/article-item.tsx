@@ -13,10 +13,8 @@ export default function ArticleItem({
   slug,
   headline,
   summary,
-  resource,
+  location,
   media,
-  author,
-  link,
   date,
 }: Article) {
   const mediaIsVideo = isVideo(media);
@@ -24,7 +22,7 @@ export default function ArticleItem({
     month: "long",
     day: "numeric",
     year: "numeric",
-    timeZone: "UTC"
+    timeZone: "UTC",
   });
   return (
     <li>
@@ -33,7 +31,7 @@ export default function ArticleItem({
           <Link href={`/articles/${slug}`}>
             <h2>{headline}</h2>
           </Link>
-          {author !== "See article for details" && <p>by: {author}</p>}
+          {location && <p>{location}</p>}
           <p>{humanReadableDate}</p>
         </header>
         <hr />
@@ -42,11 +40,11 @@ export default function ArticleItem({
             {mediaIsVideo ? (
               <Video media={media} />
             ) : (
-              <Image src={media} alt={slug} fill />
+              media && <Image src={media} alt={slug} fill />
             )}
           </div>
         </Link>
-        <p className={classes.summary}>{summary}</p>
+        {summary && <p className={classes.summary}>{summary}</p>}
         <div className={classes.actions}>
           <Link href={`/articles/${slug}`}>View Details</Link>
         </div>

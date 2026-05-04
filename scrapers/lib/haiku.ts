@@ -44,14 +44,14 @@ const EXTRACT_TOOL = {
   },
 }
 
-const REQUEST_TIMEOUT_MS = 75_000
-const REQUEST_MAX_RETRIES = 3
+const REQUEST_TIMEOUT_MS = 180_000
+const REQUEST_MAX_RETRIES = 2
 
 export async function extractArticle(pageText: string): Promise<ExtractedArticle> {
   const res = await client.messages.create(
     {
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 16384,
       system: SYSTEM_PROMPT,
       tools: [EXTRACT_TOOL],
       tool_choice: { type: 'tool', name: 'extract_article' },

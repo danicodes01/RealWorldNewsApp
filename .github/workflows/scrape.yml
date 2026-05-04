@@ -2,9 +2,11 @@ name: Daily scrape
 
 on:
   schedule:
-    - cron: '0 11 * * *'   # 07:00 EDT / 06:00 EST — morning
-    - cron: '0 15 * * *'   # 11:00 EDT / 10:00 EST — late morning (catches sources that post after 10 UTC)
-    - cron: '0 21 * * *'   # 17:00 EDT / 16:00 EST — afternoon refresh
+    # Weekdays only (Mon–Fri) — skipping weekends while the API billing-sync
+    # issue is open. Revert the last field to `*` to resume daily runs.
+    - cron: '0 11 * * 1-5'   # 07:00 EDT / 06:00 EST — morning
+    - cron: '0 15 * * 1-5'   # 11:00 EDT / 10:00 EST — late morning (catches sources that post after 10 UTC)
+    - cron: '0 21 * * 1-5'   # 17:00 EDT / 16:00 EST — afternoon refresh
   workflow_dispatch:
 
 concurrency:

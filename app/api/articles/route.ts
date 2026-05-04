@@ -45,6 +45,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Date is in the future' }, { status: 422 })
   }
 
+  // Freshness floor: site only shows news ≤3 days old. Reject older articles
+  // here so a forgetful scraper can't pollute the DB. Scrapers should also
+  // skip old articles BEFORE calling Haiku to save extraction cost.
+  const maxAgeMs = 3 * 24 * 60 * 60 * 1000
+  if (parsedDate.getTime() < Date.now() - maxAgeMs) {
+    return NextResponse.json({ message: 'Article older than 3-day freshness floor' }, { status: 422 })
+  }
+
   const data = {
     slug: slug.trim(),
     headline: headline.trim(),

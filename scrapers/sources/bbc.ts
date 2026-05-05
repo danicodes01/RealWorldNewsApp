@@ -13,6 +13,25 @@ const BASE_URL = 'https://www.bbc.com'
 const INDEX_URL = 'https://www.bbc.com/news/world'
 const NEWS_PATH = /^https:\/\/www\.bbc\.com\/news\/articles\/[a-z0-9]+\/?$/
 
+// Mirrors the freshness floor in app/api/articles/route.ts. Keep them in sync.
+const MAX_AGE_DAYS = 3
+const MAX_AGE_MS = MAX_AGE_DAYS * 24 * 60 * 60 * 1000
+
+function extractPublishedTime($doc: cheerio.CheerioAPI): string {
+  const metaTime = $doc('meta[property="article:published_time"]').attr('content')
+  if (metaTime) return metaTime
+  const timeAttr = $doc('time[datetime]').first().attr('datetime')
+  if (timeAttr) return timeAttr
+  return ''
+}
+
+function toISO(input: string): string {
+  if (!input) return new Date().toISOString()
+  const parsed = new Date(input)
+  if (isNaN(parsed.getTime())) return new Date().toISOString()
+  return parsed.toISOString()
+}
+
 async function dismissCookieBanner(page: Awaited<ReturnType<Browser['newPage']>>) {
   const selectors = [
     'button[data-testid="accept-cookies-button"]',
@@ -126,6 +145,8 @@ async function run() {
 
   const browser = await chromium.launch({ headless: true })
   const payloads: ArticlePayload[] = []
+  let skippedStale = 0
+  let skippedOther = 0
   try {
     const urls = await getArticleLinks(browser)
     log(SOURCE, 'found-links', { count: urls.length })
@@ -136,12 +157,28 @@ async function run() {
       log(SOURCE, 'extract-start', { index: i + 1, of: urls.length, url })
       try {
         const raw = await getPageText(browser, url)
+        const $doc = cheerio.load(raw)
+        const publishedTime = extractPublishedTime($doc)
+        // Pre-Haiku freshness check: if we can confirm the article is older
+        // than the floor, skip the extraction call entirely. If the date is
+        // missing/unparseable we still proceed — the ingest endpoint will
+        // catch stale articles as a backstop.
+        if (publishedTime) {
+          const articleMs = new Date(publishedTime).getTime()
+          if (!isNaN(articleMs) && articleMs < Date.now() - MAX_AGE_MS) {
+            const ageDays = Math.floor((Date.now() - articleMs) / (24 * 60 * 60 * 1000))
+            log(SOURCE, 'skipped-stale', { url, ageDays, publishedTime })
+            skippedStale++
+            continue
+          }
+        }
         const author = extractAuthor(raw)
         const minimal = buildMinimalDoc(raw)
         log(SOURCE, 'prompt-size', { index: i + 1, chars: minimal.length })
         const data = await extractArticle(minimal)
         if (!data.headline) {
           log(SOURCE, 'skipped-no-headline', { url })
+          skippedOther++
           continue
         }
         payloads.push({
@@ -154,16 +191,23 @@ async function run() {
           author,
           source: SOURCE_NAME,
           sourceUrl: url,
-          date: data.date,
+          date: toISO(publishedTime || data.date),
         })
         log(SOURCE, 'extract-done', { index: i + 1, ms: Date.now() - t0 })
       } catch (err) {
         error(SOURCE, 'extract-failed', { url, message: (err as Error).message })
+        skippedOther++
       }
     }
   } finally {
     await browser.close()
   }
+
+  log(SOURCE, 'summary', {
+    extracted: payloads.length,
+    skippedStale,
+    skippedOther,
+  })
 
   if (payloads.length === 0) {
     log(SOURCE, 'done-empty', { reason: 'no payloads — keeping existing rows' })

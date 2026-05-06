@@ -46,7 +46,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <main className={classes.header}>
-      <SearchBar initialQuery={searchQuery ?? ""} />
+      <SearchBar key={activeSource} initialQuery={searchQuery ?? ""} />
       <SourceTabs
         options={tabOptions}
         active={activeSource}

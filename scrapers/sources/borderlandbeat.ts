@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio'
+import type { AnyNode } from 'domhandler'
 import { chromium, type Browser } from 'playwright'
 import { env } from '../lib/env'
 import { getPageText } from '../lib/browser'
@@ -65,6 +66,11 @@ async function getArticleLinks(browser: Browser): Promise<string[]> {
   }
 }
 
+type BodyBlock =
+  | { type: 'paragraph'; text: string }
+  | { type: 'heading'; level: 2 | 3; text: string }
+  | { type: 'image'; src: string; alt: string }
+
 function buildMinimalDoc(html: string): string {
   const $ = cheerio.load(html)
 
@@ -106,6 +112,85 @@ ${bodyParas.join('\n')}
 </body></html>`
 }
 
+function normalizeImageKey(url: string): string {
+  const m = url.match(/AVvXsE[A-Za-z0-9_-]+/)
+  return m ? m[0] : url
+}
+
+function buildBodyBlocks(html: string, heroImg: string): BodyBlock[] {
+  const $ = cheerio.load(html)
+  $('.related-postbwrap, .post-share-buttons, .reaction-buttons, .postmeta-secondary, #bpostrelated-post, .breadcrumb-bwrap').remove()
+
+  const container = $('.post-body.entry-content').first()
+  if (!container.length) return []
+
+  const blocks: BodyBlock[] = []
+  const seen = new Set<string>()
+  if (heroImg) seen.add(normalizeImageKey(heroImg))
+
+  let buffer = ''
+  const flushText = () => {
+    if (!buffer) return
+    const paras = buffer
+      .split(/\n\s*\n+/)
+      .map(p => p.replace(/\s*\n\s*/g, ' ').replace(/[ \t]+/g, ' ').trim())
+      .filter(Boolean)
+    for (const text of paras) blocks.push({ type: 'paragraph', text })
+    buffer = ''
+  }
+
+  const walk = (node: AnyNode) => {
+    if (node.type === 'text') {
+      buffer += node.data ?? ''
+      return
+    }
+    if (node.type !== 'tag') return
+    const tag = node.tagName?.toLowerCase?.() ?? ''
+
+    if (tag === 'img') {
+      const src = ($(node).attr('src') ?? '').trim()
+      if (!src || !/^https:\/\//i.test(src)) return
+      const key = normalizeImageKey(src)
+      if (seen.has(key)) return
+      seen.add(key)
+      flushText()
+      blocks.push({ type: 'image', src, alt: ($(node).attr('alt') ?? '').trim() })
+      return
+    }
+
+    if (tag === 'br') {
+      buffer += '\n'
+      return
+    }
+
+    if (tag === 'p' || tag === 'h2' || tag === 'h3') {
+      flushText()
+      const text = $(node).text().replace(/\s+/g, ' ').trim()
+      if (!text) {
+        for (const child of $(node).contents().toArray() as AnyNode[]) walk(child)
+        return
+      }
+      if (tag === 'p') blocks.push({ type: 'paragraph', text })
+      else blocks.push({ type: 'heading', level: tag === 'h2' ? 2 : 3, text })
+      return
+    }
+
+    for (const child of $(node).contents().toArray() as AnyNode[]) walk(child)
+  }
+
+  for (const child of container.contents().toArray() as AnyNode[]) walk(child)
+  flushText()
+
+  return blocks
+}
+
+function blocksToPlainBody(blocks: BodyBlock[]): string {
+  return blocks
+    .filter(b => b.type === 'paragraph' || b.type === 'heading')
+    .map(b => (b as { text: string }).text)
+    .join('\n\n')
+}
+
 async function run() {
   log(SOURCE, 'start', { index: INDEX_URL, limit: env.SCRAPE_LIMIT })
 
@@ -144,21 +229,25 @@ async function run() {
         const author =
           $doc('a[rel="author"]').first().text().trim() ||
           $doc('.meta_pbtauthor').first().text().trim()
+        const blocks = buildBodyBlocks(raw, heroImg)
+        const inlineImages = blocks.filter(b => b.type === 'image').length
         const minimal = buildMinimalDoc(raw)
-        log(SOURCE, 'prompt-size', { index: i + 1, chars: minimal.length, hasImage: Boolean(heroImg) })
+        log(SOURCE, 'prompt-size', { index: i + 1, chars: minimal.length, hasImage: Boolean(heroImg), inlineImages })
         const data = await extractArticle(minimal)
         if (!data.headline) {
           log(SOURCE, 'skipped-no-headline', { url })
           skippedOther++
           continue
         }
+        const plainBody = blocksToPlainBody(blocks) || data.body
         payloads.push({
           slug: slugify(data.headline),
           headline: data.headline,
           summary: data.summary,
-          body: data.body,
+          body: plainBody,
           location: data.location,
           media: heroImg || data.media,
+          bodyBlocks: blocks.length ? JSON.stringify(blocks) : '',
           author,
           source: SOURCE_NAME,
           sourceUrl: url,

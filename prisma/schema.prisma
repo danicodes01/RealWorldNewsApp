@@ -17,6 +17,7 @@ model Article {
   body      String   @default("")
   location  String   @default("")
   media     String   @default("")
+  bodyBlocks String  @default("")
   videoUrl  String   @default("")
   author    String   @default("")
   source    String   @default("")

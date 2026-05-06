@@ -48,6 +48,17 @@
   }
 }
 
+.titleLink {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.titleLink:hover,
+.titleLink:focus-visible {
+  color: var(--link);
+}
+
 .summary {
   margin: 0;
   font-family: "Fira Code", monospace;
@@ -94,6 +105,37 @@
 
 .body p {
   margin: 0;
+}
+
+.bodyHeading {
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+@media (min-width: 768px) {
+  .bodyHeading {
+    font-size: 1.35rem;
+  }
+}
+
+.bodyImage {
+  margin: 0;
+  inline-size: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.4);
+  background: rgba(var(--blur-rgb), 0.08);
+}
+
+.bodyImage img {
+  inline-size: 100%;
+  block-size: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .sourceLinkWrap {

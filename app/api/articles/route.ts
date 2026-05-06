@@ -9,6 +9,7 @@ type Body = {
   body?: string
   location?: string
   media?: string
+  bodyBlocks?: string
   videoUrl?: string
   author?: string
   source?: string
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { slug, headline, summary, body: articleBody, location, media, videoUrl, author, source, sourceUrl, date } = body
+  const { slug, headline, summary, body: articleBody, location, media, bodyBlocks, videoUrl, author, source, sourceUrl, date } = body
 
   if (!slug?.trim() || !headline?.trim() || !articleBody?.trim() || !date) {
     return NextResponse.json({ message: 'Missing required fields: slug, headline, body, date' }, { status: 422 })
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
     body: articleBody,
     location: location?.trim() ?? '',
     media: media?.trim() ?? '',
+    bodyBlocks: bodyBlocks?.trim() ?? '',
     videoUrl: videoUrl?.trim() ?? '',
     author: author?.trim() ?? '',
     source: source?.trim() ?? '',

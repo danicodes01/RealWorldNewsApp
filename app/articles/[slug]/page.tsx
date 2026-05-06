@@ -12,6 +12,31 @@ const SITE_URL = "https://www.realworldnews.org";
 
 export const revalidate = 60;
 
+type BodyBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "heading"; level: 2 | 3; text: string }
+  | { type: "image"; src: string; alt: string };
+
+function parseBodyBlocks(json: string): BodyBlock[] | null {
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return null;
+    const valid = parsed.filter((b): b is BodyBlock => {
+      if (!b || typeof b !== "object") return false;
+      if (b.type === "paragraph") return typeof b.text === "string";
+      if (b.type === "heading")
+        return (b.level === 2 || b.level === 3) && typeof b.text === "string";
+      if (b.type === "image")
+        return typeof b.src === "string" && /^https:\/\//i.test(b.src);
+      return false;
+    });
+    return valid.length ? valid : null;
+  } catch {
+    return null;
+  }
+}
+
 interface ArticleDetailParams {
   params: Promise<{
     slug: string;
@@ -73,6 +98,7 @@ export default async function ArticleDetailPage({ params }: ArticleDetailParams)
     timeZone: "UTC",
   });
 
+  const blocks = parseBodyBlocks(article.bodyBlocks);
   const paragraphs = article.body
     .split(/\n\s*\n/)
     .map((p) => p.trim())
@@ -141,7 +167,20 @@ export default async function ArticleDetailPage({ params }: ArticleDetailParams)
       <Link href="/" className={classes.backLink}>← All articles</Link>
 
       <header className={classes.head}>
-        <h1 className={classes.title}>{article.headline}</h1>
+        <h1 className={classes.title}>
+          {article.sourceUrl ? (
+            <a
+              href={article.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={classes.titleLink}
+            >
+              {article.headline}
+            </a>
+          ) : (
+            article.headline
+          )}
+        </h1>
         {article.summary && <p className={classes.summary}>{article.summary}</p>}
         <div className={classes.meta}>
           {article.author && <span>By {article.author}</span>}
@@ -155,21 +194,60 @@ export default async function ArticleDetailPage({ params }: ArticleDetailParams)
           <Video media={article.videoUrl} poster={article.media || undefined} />
         </div>
       ) : article.media ? (
-        <div className={classes.image}>
-          <Image
-            src={article.media}
-            alt={article.slug}
-            fill
-            priority
-            sizes="(max-width: 768px) 100vw, 800px"
-          />
-        </div>
+        article.sourceUrl ? (
+          <a
+            href={article.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={classes.image}
+          >
+            <Image
+              src={article.media}
+              alt={article.slug}
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, 800px"
+            />
+          </a>
+        ) : (
+          <div className={classes.image}>
+            <Image
+              src={article.media}
+              alt={article.slug}
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, 800px"
+            />
+          </div>
+        )
       ) : null}
 
       <div className={classes.body}>
-        {paragraphs.map((p, i) => (
-          <p key={i}>{p}</p>
-        ))}
+        {blocks
+          ? blocks.map((b, i) => {
+              if (b.type === "image") {
+                return (
+                  <figure key={i} className={classes.bodyImage}>
+                    <Image
+                      src={b.src}
+                      alt={b.alt || article.headline}
+                      width={1200}
+                      height={800}
+                      sizes="(max-width: 768px) 100vw, 672px"
+                    />
+                  </figure>
+                );
+              }
+              if (b.type === "heading") {
+                return b.level === 2 ? (
+                  <h2 key={i} className={classes.bodyHeading}>{b.text}</h2>
+                ) : (
+                  <h3 key={i} className={classes.bodyHeading}>{b.text}</h3>
+                );
+              }
+              return <p key={i}>{b.text}</p>;
+            })
+          : paragraphs.map((p, i) => <p key={i}>{p}</p>)}
       </div>
 
       {article.sourceUrl && (

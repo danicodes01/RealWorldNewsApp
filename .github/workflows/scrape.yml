@@ -2,11 +2,8 @@ name: Daily scrape
 
 on:
   schedule:
-    # Weekdays only (Mon–Fri) — skipping weekends while the API billing-sync
-    # issue is open. Revert the last field to `*` to resume daily runs.
-    - cron: '0 11 * * 1-5'   # 07:00 EDT / 06:00 EST — morning
-    - cron: '0 15 * * 1-5'   # 11:00 EDT / 10:00 EST — late morning (catches sources that post after 10 UTC)
-    - cron: '0 21 * * 1-5'   # 17:00 EDT / 16:00 EST — afternoon refresh
+    - cron: '7 11 * * *'   # 07:07 EDT / 06:07 EST — early morning
+    - cron: '7 15 * * *'   # 11:07 EDT / 10:07 EST — late morning (catches Democracy Now after its 8 AM ET broadcast)
   workflow_dispatch:
 
 concurrency:

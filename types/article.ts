@@ -6,6 +6,7 @@ export interface Article {
   body: string;
   location: string;
   media: string;
+  bodyBlocks: string;
   videoUrl: string;
   author: string;
   source: string;

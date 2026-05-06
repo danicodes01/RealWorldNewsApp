@@ -1,8 +1,133 @@
-.rail {
+.wrap {
   position: relative;
   inline-size: 100%;
-  max-inline-size: 100%;
+  max-inline-size: 28rem;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+}
+
+.menuToggle {
+  flex-shrink: 0;
+  inline-size: 2rem;
+  block-size: 2rem;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: rgb(var(--muted-text-rgb));
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.menuToggle:hover {
+  color: var(--foreground);
+}
+
+.menuToggle:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.menuToggle[aria-expanded="true"] {
+  color: var(--link);
+}
+
+.rail {
+  position: relative;
+  flex: 1;
   min-inline-size: 0;
+}
+
+.menu {
+  position: absolute;
+  inset-block-start: calc(100% + var(--size-2));
+  inset-inline-start: 0;
+  z-index: 10;
+  min-inline-size: 16rem;
+  max-block-size: 22rem;
+  background: var(--background);
+  border: 1px solid rgba(var(--muted-text-rgb), 0.3);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.menuSearch {
+  margin: var(--size-2);
+  padding-block: var(--size-2);
+  padding-inline: var(--size-3);
+  background-color: transparent;
+  color: var(--foreground);
+  border: 1px solid rgba(var(--muted-text-rgb), 0.3);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.menuSearch::placeholder {
+  color: rgba(var(--muted-text-rgb), 0.7);
+}
+
+.menuSearch:focus {
+  outline: 1px solid var(--link);
+  border-color: var(--link);
+}
+
+.menuList {
+  list-style: none;
+  margin: 0;
+  padding: var(--size-1);
+  padding-block-start: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 2px;
+}
+
+.menuEmpty {
+  padding: var(--size-3);
+  color: rgba(var(--muted-text-rgb), 0.8);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.menuItem,
+.menuItemActive {
+  inline-size: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-3);
+  padding-block: var(--size-2);
+  padding-inline: var(--size-3);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.875rem;
+  text-align: inline-start;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.menuItem:hover {
+  background: rgba(var(--muted-text-rgb), 0.15);
+}
+
+.menuItemActive {
+  background: var(--link);
+  color: #0a0a0a;
+}
+
+.menuCount {
+  font-size: 0.7rem;
+  opacity: 0.7;
 }
 
 .row {
@@ -90,18 +215,4 @@
 
 .pillActive .count {
   opacity: 0.75;
-}
-
-@media (min-width: 768px) {
-  .row {
-    overflow-x: visible;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding-inline: 0;
-  }
-
-  .rail::before,
-  .rail::after {
-    display: none;
-  }
 }

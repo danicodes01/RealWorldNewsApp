@@ -27,7 +27,7 @@ export default async function Home({ searchParams }: HomeProps) {
     "Borderland Beat",
     "Courthouse News",
     "Democracy Now!",
-    "Drop Site News",
+    // "Drop Site News", // Disabled: old articles re-surfacing with today's date. See WORK_LOG.md.
     "Jacobin",
     "NPR",
     "The Intercept",

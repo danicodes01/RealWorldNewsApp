@@ -2,8 +2,9 @@ name: Daily scrape
 
 on:
   schedule:
-    - cron: '7 11 * * *'   # 07:07 EDT / 06:07 EST — early morning
-    - cron: '7 15 * * *'   # 11:07 EDT / 10:07 EST — late morning (catches Democracy Now after its 8 AM ET broadcast)
+    # Weekdays only — standing preference, not a billing workaround.
+    - cron: '7 11 * * 1-5'   # 07:07 EDT / 06:07 EST — early morning
+    - cron: '7 15 * * 1-5'   # 11:07 EDT / 10:07 EST — late morning (catches Democracy Now after its 8 AM ET broadcast)
   workflow_dispatch:
 
 concurrency:
@@ -24,7 +25,7 @@ jobs:
           - borderlandbeat
           - courthousenews
           - democracynow
-          - dropsitenews
+          # - dropsitenews  # Disabled: old articles intermittently re-surfacing with today's date. Investigating.
           - intercept
           - jacobin
           - npr

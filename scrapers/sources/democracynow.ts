@@ -15,6 +15,29 @@ const STORY_PATH = /^https:\/\/www\.democracynow\.org\/\d{4}\/\d{1,2}\/\d{1,2}\/
 
 const VIDEO_REGEX = /https:\/\/democracynow\.cachefly\.net\/democracynow\/(?:360|400|640|720|1080)\/dn\d{4}-\d{4}\.mp4(?:\?[^\s"'<>]*)?/g
 
+// Mirrors the freshness floor in app/api/articles/route.ts. Keep them in sync.
+const MAX_AGE_DAYS = 3
+const MAX_AGE_MS = MAX_AGE_DAYS * 24 * 60 * 60 * 1000
+
+function extractPublishedTime($doc: cheerio.CheerioAPI): string {
+  const metaTime = $doc('meta[property="article:published_time"]').attr('content')
+  if (metaTime) return metaTime
+  // DN has no article:published_time meta. The page has ~11 span.date
+  // elements (sidebar / headlines / related stories) all showing today's
+  // date. The article's own date lives inside #story_content — scope to
+  // there so .first() picks the right one.
+  const dateText = $doc('#story_content span.date').first().text().trim()
+  if (dateText) return dateText
+  return ''
+}
+
+function toISO(input: string): string {
+  if (!input) return new Date().toISOString()
+  const parsed = new Date(input)
+  if (isNaN(parsed.getTime())) return new Date().toISOString()
+  return parsed.toISOString()
+}
+
 async function getArticleLinks(browser: Browser): Promise<string[]> {
   const page = await browser.newPage({
     userAgent:
@@ -68,7 +91,7 @@ function buildMinimalDoc(rawHtml: string, videoUrl: string): string {
 
   const h1 = $('h1').first().text().trim()
   const ogImg = $('meta[property="og:image"]').attr('content') ?? ''
-  const dateText = $('.news_label .date').first().text().trim()
+  const dateText = $('#story_content span.date').first().text().trim()
 
   const bodyParas: string[] = []
   const container = $('#transcript, .transcript, #story_summary, .story_summary').first()
@@ -99,6 +122,8 @@ async function run() {
 
   const browser = await chromium.launch({ headless: true })
   const payloads: ArticlePayload[] = []
+  let skippedStale = 0
+  let skippedOther = 0
   try {
     const urls = await getArticleLinks(browser)
     log(SOURCE, 'found-links', { count: urls.length })
@@ -109,12 +134,28 @@ async function run() {
       log(SOURCE, 'extract-start', { index: i + 1, of: urls.length, url })
       try {
         const raw = await getPageText(browser, url)
+        const $doc = cheerio.load(raw)
+        const publishedTime = extractPublishedTime($doc)
+        // Pre-Haiku freshness check: if we can confirm the article is older
+        // than the floor, skip the extraction call entirely. If the date is
+        // missing/unparseable we still proceed — the ingest endpoint will
+        // catch stale articles as a backstop.
+        if (publishedTime) {
+          const articleMs = new Date(publishedTime).getTime()
+          if (!isNaN(articleMs) && articleMs < Date.now() - MAX_AGE_MS) {
+            const ageDays = Math.floor((Date.now() - articleMs) / (24 * 60 * 60 * 1000))
+            log(SOURCE, 'skipped-stale', { url, ageDays, publishedTime })
+            skippedStale++
+            continue
+          }
+        }
         const videoUrl = extractVideoUrl(raw)
         const minimal = buildMinimalDoc(raw, videoUrl)
         log(SOURCE, 'prompt-size', { index: i + 1, chars: minimal.length, hasVideo: Boolean(videoUrl) })
         const data = await extractArticle(minimal)
         if (!data.headline) {
           log(SOURCE, 'skipped-no-headline', { url })
+          skippedOther++
           continue
         }
         payloads.push({
@@ -127,16 +168,23 @@ async function run() {
           videoUrl,
           source: SOURCE_NAME,
           sourceUrl: url,
-          date: data.date,
+          date: toISO(publishedTime || data.date),
         })
         log(SOURCE, 'extract-done', { index: i + 1, ms: Date.now() - t0 })
       } catch (err) {
         error(SOURCE, 'extract-failed', { url, message: (err as Error).message })
+        skippedOther++
       }
     }
   } finally {
     await browser.close()
   }
+
+  log(SOURCE, 'summary', {
+    extracted: payloads.length,
+    skippedStale,
+    skippedOther,
+  })
 
   if (payloads.length === 0) {
     log(SOURCE, 'done-empty', { reason: 'no payloads — keeping existing rows' })

@@ -3,6 +3,14 @@ import { Article } from "../types/article";
 
 const PAGE_SIZE = 12;
 
+// Sources whose existing rows should be hidden from the UI even though they
+// remain in the DB. Used to park a scraper while keeping the data for later
+// debugging/restoration. Mirror this in app/page.tsx KNOWN_SOURCES comments
+// so the source tab doesn't show either.
+const HIDDEN_SOURCES = new Set<string>([
+  "Drop Site News", // re-surfacing old articles with today's date — see WORK_LOG.md
+]);
+
 export interface SourceCount {
   source: string;
   count: number;
@@ -32,10 +40,11 @@ export async function getArticles(
       }
     : {};
 
-  const searchScoped = await prisma.article.findMany({
+  const rawSearchScoped = await prisma.article.findMany({
     where: searchWhere,
     orderBy: { date: "desc" },
   });
+  const searchScoped = rawSearchScoped.filter((a) => !HIDDEN_SOURCES.has(a.source));
 
   const sourceCountMap = new Map<string, number>();
   for (const a of searchScoped) {

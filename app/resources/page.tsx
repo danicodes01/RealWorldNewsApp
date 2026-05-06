@@ -42,7 +42,7 @@ type Resource = {
 
 const CONTACT = {
   name: "Support Real World News",
-  email: "contact@distortnewyork.com",
+  email: "news@distortnewyork.com",
   donateUrl: "https://buy.stripe.com/cN27wea9keVG7FS5kn",
 };
 

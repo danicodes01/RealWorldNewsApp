@@ -27,7 +27,7 @@ jobs:
           - borderlandbeat
           - courthousenews
           - democracynow
-          - dropsitenews
+          # - dropsitenews  # Disabled: old articles intermittently re-surfacing with today's date. Investigating.
           - intercept
           - jacobin
           - npr

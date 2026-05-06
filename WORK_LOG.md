@@ -6,6 +6,15 @@ Running log of changes and decisions. Newest first. Keep entries terse — the w
 
 ## Open / blocked
 
+### Drop Site News: old article re-surfacing with today's date (regression)
+**Status:** parked. `dropsitenews` commented out of `.github/workflows/scrape.yml` matrix so it doesn't run in CI until investigated. Manual `npm run scraper:dropsitenews` and `workflow_dispatch` still work for debugging.
+**Symptom:** the Feb 18 Epstein/Ehud Barak article (`/p/israeli-government-surveillance-epstein-apartment-66th-street-ehud-barak`) is back at the top of the feed with today's date. This is the *same article* that the original test run correctly logged as `skipped-stale { ageDays: 75, publishedTime: "Feb 18, 2026" }`, so the regex extractor *did* work locally.
+**Hypotheses (to test in order):**
+1. **Substack serves different HTML to GitHub Actions IPs** — no JS context / different geolocation could make the byline `<div>Feb 18, 2026</div>` selector miss in CI even though it works locally. Then `extractPublishedTime` returns empty → freshness check skipped → Haiku called → Haiku doesn't see the date in the minimal-doc → falls back to today.
+2. **Drop Site front-end recycling** — they sometimes pin old "investigation" content to the top. URL hasn't changed, so the slug-based upsert overwrites the existing row with whatever date the new run produces.
+**How to debug:** in the next CI run logs (after re-enabling), grep for that exact URL. If it shows `extract-start` (not `skipped-stale`), the date extraction is failing in CI — investigation #1. If `skipped-stale` fires but the article still appears in the feed, it's coming from somewhere else — investigation #2.
+**Don't re-enable** in CI until you've reproduced and fixed.
+
 ### Anthropic billing sync issue — scrapers blocked
 **Status:** waiting on human escalation from Anthropic support (email sent to `support@anthropic.com` on 2026-05-02 with full request_id history).
 **Symptom:** every API call returns HTTP 400 `invalid_request_error` "Your credit balance is too low" despite $30 visible balance, Tier 2 active, payment cleared, and $0/$500 monthly spend.
@@ -22,12 +31,7 @@ Running log of changes and decisions. Newest first. Keep entries terse — the w
 
 ## In progress
 
-### Freshness floor + scraper cost reduction — 8 scrapers remaining
-**Plan:** option (b) — infra first (done), then per-scraper date hoist + pre-Haiku stale-skip, one source per PR so regressions are easy to attribute.
-**Done:** `dropsitenews` (was already deterministic after the May 1 date fix, so it was the cheapest first conversion).
-**Remaining (in any order):** `aljazeera`, `bbc`, `borderlandbeat`, `courthousenews`, `democracynow`, `intercept`, `jacobin`, `npr`.
-**Per-source pattern:** read `meta[property="article:published_time"]` (and `<time datetime>`) directly in TS → if older than `MAX_AGE_DAYS` skip Haiku entirely → otherwise pass to Haiku as today. Also add the `skippedStale / skippedPaywalled / skippedOther` counters + `summary` log line.
-**Don't start until** the Anthropic billing issue is resolved, otherwise we can't verify each conversion end-to-end.
+_Nothing in progress. Freshness-skip rollout completed 2026-05-06 (see Shipped). Drop Site parked pending regression investigation (see Open/blocked)._
 
 ---
 
@@ -50,6 +54,21 @@ Running log of changes and decisions. Newest first. Keep entries terse — the w
 ---
 
 ## Shipped
+
+### 2026-05-06 — Drop Site: disabled in CI matrix pending bug investigation
+**File:** `.github/workflows/scrape.yml`
+**What:** `- dropsitenews` commented out of the strategy matrix with a note pointing at the regression. Scheduled crons skip it; manual runs still work.
+**Why:** old article re-surfacing with today's date in production. See the open/blocked entry for hypotheses.
+
+### 2026-05-05/06 — Freshness-skip rollout completed (7 sources)
+**Files:** `scrapers/sources/{aljazeera,bbc,borderlandbeat,courthousenews,democracynow,intercept,jacobin,npr}.ts`
+**What:** applied the dropsite pattern to all remaining scrapers — `extractPublishedTime` + `toISO` helpers, pre-Haiku stale skip, `skippedStale / skippedOther` counters, end-of-run `summary` log line, and `toISO(publishedTime || data.date)` for ingest.
+**Per-source notes:**
+- **bbc, courthousenews, npr** — major outlets with all-fresh homepages; freshness skip didn't fire on test runs but the deterministic date is still the win.
+- **aljazeera** — caught a 65-day "live tracker" recycled article on first run. Working as designed.
+- **borderlandbeat, intercept, jacobin** — biggest cost wins (7/8/9 stale skipped on test runs); these sources publish less frequently so the homepage carries older content.
+- **democracynow** — first selector attempt was wrong: page has ~11 `span.date` elements (sidebar / headlines / related stories), `.first()` matched a sidebar. Fixed by scoping to `#story_content span.date`.
+**Cost picture:** test runs across all 9 sources skipped 45 of 133 candidate articles (~34%) before any Haiku call. At 3 daily runs × 5 weekdays that's roughly 675 saved Haiku calls per week from the freshness skip alone. Compounding gains across the long-running schedule.
 
 ### 2026-05-04 — Haiku: max_tokens + timeout for long-form articles
 **File:** `scrapers/lib/haiku.ts`

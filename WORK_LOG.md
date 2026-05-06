@@ -82,10 +82,10 @@ _Nothing in progress. Freshness-skip rollout completed 2026-05-06 (see Shipped).
 **What:** `buildMinimalDoc` now accepts the TS-side ISO date and uses it as the `<time datetime="...">` fallback when `meta[article:published_time]` is missing.
 **Why:** Drop Site has no `article:published_time` meta — Haiku saw no date in the prompt and either hallucinated "today" or returned `date=false`. We already have the date from the regex fallback (`extractPublishedTime`) for the freshness skip, so just forward it.
 
-### 2026-05-02 — GitHub Actions: weekdays only
+### 2026-05-06 — GitHub Actions: weekday-only is now a standing preference
 **File:** `.github/workflows/scrape.yml`
-**What:** cron day-of-week field changed from `*` to `1-5` on all three schedules (11:00 / 15:00 / 21:00 UTC). `workflow_dispatch` still works for manual weekend runs.
-**Why:** while the Anthropic billing issue is unresolved, every scheduled run wastes a CI minute and (once unblocked) would burn API calls without delivering value over the weekend. Revert to `*` once unblocked.
+**What:** cron remains `1-5` (Mon–Fri) after the merge with main. Main had switched to daily `*` with a `:07` stagger + DN-broadcast comment; we kept main's stagger/comment and re-applied weekday-only on top. `workflow_dispatch` still works for manual weekend runs.
+**Why:** weekday-only was *originally* a workaround for the Anthropic billing issue. Billing is resolved, but the user wants weekday-only kept indefinitely — no weekend runs even when budget allows. Treat this as a standing schedule decision, not a workaround to revert.
 
 ### 2026-05-02 — Drop Site: pre-Haiku freshness skip + summary log
 **File:** `scrapers/sources/dropsitenews.ts`

@@ -31,6 +31,7 @@ export default async function Home({ searchParams }: HomeProps) {
     "Jacobin",
     "NPR",
     "The Intercept",
+    "The New York Times",
   ];
   const countBySource = new Map(sourceCounts.map((s) => [s.source, s.count]));
   const tabOptions = KNOWN_SOURCES.map((name) => ({

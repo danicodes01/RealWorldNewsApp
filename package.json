@@ -18,7 +18,8 @@
     "scraper:courthousenews": "ts-node --project scrapers/tsconfig.json scrapers/sources/courthousenews.ts",
     "scraper:dropsitenews": "ts-node --project scrapers/tsconfig.json scrapers/sources/dropsitenews.ts",
     "scraper:intercept": "ts-node --project scrapers/tsconfig.json scrapers/sources/intercept.ts",
-    "scraper:all": "npm run scraper:aljazeera; npm run scraper:bbc; npm run scraper:democracynow; npm run scraper:borderlandbeat; npm run scraper:jacobin; npm run scraper:courthousenews; npm run scraper:dropsitenews; npm run scraper:intercept; npm run scraper:npr",
+    "scraper:nytimes": "ts-node --project scrapers/tsconfig.json scrapers/sources/nytimes.ts",
+    "scraper:all": "npm run scraper:aljazeera; npm run scraper:bbc; npm run scraper:democracynow; npm run scraper:borderlandbeat; npm run scraper:jacobin; npm run scraper:courthousenews; npm run scraper:dropsitenews; npm run scraper:intercept; npm run scraper:nytimes; npm run scraper:npr",
     "db:clear": "ts-node --project scrapers/tsconfig.json scripts/db-clear.ts"
   },
   "dependencies": {

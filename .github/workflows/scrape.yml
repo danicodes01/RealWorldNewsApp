@@ -29,6 +29,7 @@ jobs:
           - intercept
           - jacobin
           - npr
+          - nytimes
     name: scrape-${{ matrix.source }}
     steps:
       - uses: actions/checkout@v6

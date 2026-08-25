@@ -10,7 +10,7 @@ import AgeGate from "@/components/articles/age-gate";
 const SENSITIVE_SOURCES = new Set(["Borderland Beat"]);
 const SITE_URL = "https://www.realworldnews.org";
 
-export const revalidate = 60;
+export const revalidate = 86400;
 
 type BodyBlock =
   | { type: "paragraph"; text: string }

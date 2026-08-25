@@ -5,7 +5,7 @@ import SearchBar from "@/components/search/search-bar";
 import SourceTabs from "@/components/articles/source-tabs";
 import PaginationWrapper from "@/components/ui/pagination/pagination-wrapper";
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 interface HomeProps {
   searchParams: Promise<{ q?: string; page?: string; source?: string }>;
